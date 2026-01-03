@@ -1,100 +1,94 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { io } from "socket.io-client";
+import { useState, useEffect } from "react";
 import "./App.css";
 
-const API = "https://video-moderation-app.onrender.com";
-
-const socket = io(API);
-
-export default function App() {
-  const [token, setToken] = useState("");
+function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [videos, setVideos] = useState([]);
-  const [progress, setProgress] = useState(0);
-  const [uploading, setUploading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Check login on load
   useEffect(() => {
-    socket.on("progress", (data) => {
-      setProgress(data.progress);
-      if (data.progress >= 100) setUploading(false);
-    });
-    return () => socket.off("progress");
+    const auth = localStorage.getItem("auth");
+    if (auth === "true") {
+      setIsLoggedIn(true);
+    }
   }, []);
 
-  const login = async () => {
-    const res = await axios.post(`${API}/login`, { email, password });
-    setToken(res.data.token);
+  // Demo Login Handler
+  const handleLogin = (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    // DEMO AUTH SUCCESS
+    localStorage.setItem("auth", "true");
+    setIsLoggedIn(true);
   };
 
-  const uploadVideo = async (e) => {
-    setUploading(true);
-    setProgress(0);
-    const form = new FormData();
-    form.append("video", e.target.files[0]);
-    await axios.post(`${API}/upload`, form, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  const handleLogout = () => {
+    localStorage.removeItem("auth");
+    setIsLoggedIn(false);
   };
 
-  const loadVideos = async () => {
-    const res = await axios.get(`${API}/videos`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setVideos(res.data);
-  };
+  // ---------------- UI ----------------
 
+  // LOGIN PAGE
+  if (!isLoggedIn) {
+    return (
+      <div className="login-page">
+        <h1 className="title">VIDEO MODERATION SYSTEM</h1>
+        <p className="subtitle">Upload · Analyze · Stream · Review</p>
+
+        <form className="login-card" onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit">ENTER DASHBOARD</button>
+        </form>
+      </div>
+    );
+  }
+
+  // DASHBOARD PAGE
   return (
-    <div className="rog-app">
-      <header className="rog-hero">
-        <h1>VIDEO MODERATION SYSTEM</h1>
-        <p>Upload • Analyze • Stream • Review</p>
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <h2>Video Moderation Dashboard</h2>
+        <button onClick={handleLogout}>Logout</button>
       </header>
 
-      {!token && (
-        <div className="rog-login">
-          <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-          <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
-          <button onClick={login}>ENTER DASHBOARD</button>
+      <div className="dashboard-content">
+        <div className="card">
+          <h3>Upload Video</h3>
+          <input type="file" />
         </div>
-      )}
 
-      {token && (
-        <>
-          <section className="rog-upload">
-            <h2>Upload Video</h2>
-            <input type="file" accept="video/mp4" onChange={uploadVideo} disabled={uploading} />
+        <div className="card">
+          <h3>Processing Status</h3>
+          <p>Status: Waiting for upload</p>
+        </div>
 
-            <div className="rog-progress">
-              <div className="rog-progress-bar" style={{ width: `${progress}%` }}>
-                {progress}%
-              </div>
-            </div>
-
-            <button onClick={loadVideos}>Refresh Library</button>
-          </section>
-
-          <section className="rog-grid">
-            {videos.map(v => (
-              <div key={v._id} className="rog-card">
-                <span className={`rog-badge ${v.sensitivity}`}>
-                  {v.sensitivity.toUpperCase()}
-                </span>
-                <span className="rog-status">{v.status}</span>
-
-                {v.status === "done" && (
-                  <video
-                    controls
-                    preload="metadata"
-                    src={`${API}/stream/${v.filename}`}
-                  />
-                )}
-              </div>
-            ))}
-          </section>
-        </>
-      )}
+        <div className="card">
+          <h3>Video Library</h3>
+          <p>No videos yet</p>
+        </div>
+      </div>
     </div>
   );
 }
+
+export default App;
