@@ -1,3 +1,8 @@
+/************************************************************
+ * VIDEO MODERATION BACKEND – FINAL PRODUCTION VERSION
+ * Stack: Node.js + Express + MongoDB + JWT + Socket.io
+ ************************************************************/
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -10,10 +15,11 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
-/* ================= APP SETUP ================= */
+/* ================= APP & SOCKET SETUP ================= */
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: { origin: "*" },
 });
@@ -21,7 +27,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-/* ================= UPLOADS DIR ================= */
+/* ================= UPLOADS DIRECTORY ================= */
 
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -29,77 +35,74 @@ if (!fs.existsSync(uploadDir)) {
 }
 app.use("/uploads", express.static(uploadDir));
 
-/* ================= DB ================= */
+/* ================= DATABASE ================= */
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Atlas Connected"))
   .catch((err) => {
-    console.error("MongoDB Error:", err.message);
+    console.error("MongoDB connection error:", err.message);
     process.exit(1);
   });
 
 /* ================= MODELS ================= */
 
-const User = mongoose.model(
-  "User",
-  new mongoose.Schema({
-    email: { type: String, unique: true },
-    password: String,
-    role: { type: String, default: "viewer" },
-  })
-);
+const UserSchema = new mongoose.Schema({
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  role: { type: String, default: "editor" },
+});
 
-const Video = mongoose.model(
-  "Video",
-  new mongoose.Schema({
-    filename: String,
-    status: String,
-    sensitivity: String,
-    uploadedBy: String,
-    createdAt: { type: Date, default: Date.now },
-  })
-);
+const VideoSchema = new mongoose.Schema({
+  filename: String,
+  status: String,
+  sensitivity: String,
+  uploadedBy: String,
+  createdAt: { type: Date, default: Date.now },
+});
 
-/* ================= AUTH ================= */
+const User = mongoose.model("User", UserSchema);
+const Video = mongoose.model("Video", VideoSchema);
+
+/* ================= AUTH MIDDLEWARE ================= */
 
 function auth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: "Token missing" });
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: "Token missing" });
 
-  const token = authHeader.split(" ")[1] || authHeader;
+  const token = header.split(" ")[1];
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(403).json({ error: "Invalid token" });
-    req.user = user;
+    req.user = decoded;
     next();
   });
 }
 
-/* ================= REGISTER ================= */
-
-app.post("/register", async (req, res) => {
+/* ================= AUTH ROUTES ================= */
+/* Register */
+app.post("/api/auth/register", async (req, res) => {
   try {
-    const hash = await bcrypt.hash(req.body.password, 10);
-    await User.create({
-      email: req.body.email,
-      password: hash,
-      role: req.body.role || "editor",
-    });
-    res.json({ message: "User registered" });
+    const { email, password } = req.body;
+
+    const hashed = await bcrypt.hash(password, 10);
+    await User.create({ email, password: hashed });
+
+    res.json({ message: "User registered successfully" });
   } catch {
     res.status(400).json({ error: "User already exists" });
   }
 });
 
-/* ================= LOGIN ================= */
+/* Login */
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
 
-app.post("/login", async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
+  const user = await User.findOne({ email });
   if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
-  const match = await bcrypt.compare(req.body.password, user.password);
-  if (!match) return res.status(401).json({ error: "Invalid credentials" });
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
   const token = jwt.sign(
     { email: user.email, role: user.role },
@@ -110,7 +113,7 @@ app.post("/login", async (req, res) => {
   res.json({ token });
 });
 
-/* ================= MULTER ================= */
+/* ================= MULTER CONFIG ================= */
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -126,7 +129,7 @@ const upload = multer({ storage });
 
 /* ================= UPLOAD VIDEO ================= */
 
-app.post("/upload", auth, upload.single("video"), async (req, res) => {
+app.post("/api/videos/upload", auth, upload.single("video"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   const video = await Video.create({
@@ -154,12 +157,12 @@ app.post("/upload", auth, upload.single("video"), async (req, res) => {
     }
   }, 1000);
 
-  res.json({ message: "Upload started" });
+  res.json({ message: "Upload started", filename: video.filename });
 });
 
-/* ================= LIST VIDEOS ================= */
+/* ================= LIST USER VIDEOS ================= */
 
-app.get("/videos", auth, async (req, res) => {
+app.get("/api/videos", auth, async (req, res) => {
   const videos = await Video.find({ uploadedBy: req.user.email }).sort({
     createdAt: -1,
   });
@@ -168,7 +171,7 @@ app.get("/videos", auth, async (req, res) => {
 
 /* ================= STREAM VIDEO ================= */
 
-app.get("/stream/:filename", (req, res) => {
+app.get("/api/videos/stream/:filename", (req, res) => {
   const filePath = path.join(uploadDir, req.params.filename);
 
   if (!fs.existsSync(filePath)) {
