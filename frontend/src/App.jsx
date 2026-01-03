@@ -3,7 +3,8 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import "./App.css";
 
-const API = "http://localhost:5000";
+const API = "https://video-moderation-app.onrender.com";
+
 const socket = io(API);
 
 export default function App() {
