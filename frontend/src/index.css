@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  color: white;
+}
+
+.login, .dashboard {
+  max-width: 1000px;
+  margin: auto;
+  padding: 40px;
+}
+
+input, button {
+  display: block;
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  background: #22d3ee;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.card {
+  background: #111827;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.video-card {
+  background: #020617;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.processing {
+  background: orange;
+}
+
+.done {
+  background: green;
+}
+
+.logout {
+  margin-top: 40px;
+  background: red;
+}

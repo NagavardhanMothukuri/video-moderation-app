@@ -9,8 +9,6 @@ export default function App() {
   const [file, setFile] = useState(null);
   const [videos, setVideos] = useState([]);
 
-  /* ================= LOGIN ================= */
-
   async function login() {
     const res = await fetch(`${API}/api/auth/login`, {
       method: "POST",
@@ -19,35 +17,21 @@ export default function App() {
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || "Login failed");
-      return;
-    }
+    if (!res.ok) return alert(data.error || "Login failed");
 
     localStorage.setItem("token", data.token);
     setToken(data.token);
   }
 
-  /* ================= FETCH VIDEOS ================= */
-
   async function loadVideos() {
     const res = await fetch(`${API}/videos`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    const data = await res.json();
-    setVideos(data);
+    setVideos(await res.json());
   }
 
-  useEffect(() => {
-    if (token) loadVideos();
-  }, [token]);
-
-  /* ================= UPLOAD ================= */
-
   async function uploadVideo() {
-    if (!file) return alert("Select a file");
+    if (!file) return alert("Select a video");
 
     const form = new FormData();
     form.append("video", file);
@@ -62,86 +46,56 @@ export default function App() {
     setTimeout(loadVideos, 3000);
   }
 
-  /* ================= LOGOUT ================= */
-
   function logout() {
-    localStorage.removeItem("token");
+    localStorage.clear();
     setToken(null);
   }
 
-  /* ================= UI ================= */
+  useEffect(() => {
+    if (token) loadVideos();
+  }, [token]);
 
   if (!token) {
     return (
-      <div style={styles.container}>
+      <div className="login">
         <h1>VIDEO MODERATION SYSTEM</h1>
-
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
+        <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+        <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
         <button onClick={login}>ENTER DASHBOARD</button>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <div className="dashboard">
       <h1>Dashboard</h1>
-      <p>You are logged in securely.</p>
+      <p className="subtitle">Upload, analyze and review videos</p>
 
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <button onClick={uploadVideo}>Upload Video</button>
+      <div className="card">
+        <h3>Upload Video</h3>
+        <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+        <button onClick={uploadVideo}>Upload</button>
+      </div>
 
       <h2>My Videos</h2>
 
-      {videos.length === 0 && <p>No videos yet</p>}
+      <div className="grid">
+        {videos.map((v) => (
+          <div className="video-card" key={v._id}>
+            <p className="name">{v.filename}</p>
+            <span className={`badge ${v.status}`}>{v.status}</span>
+            <p>Sensitivity: {v.sensitivity}</p>
 
-      {videos.map((v) => (
-        <div key={v._id} style={styles.card}>
-          <p><b>{v.filename}</b></p>
-          <p>Status: {v.status}</p>
-          <p>Sensitivity: {v.sensitivity}</p>
+            {v.status === "done" && (
+              <video controls>
+                <source src={`${API}/stream/${v.filename}`} />
+              </video>
+            )}
+          </div>
+        ))}
+      </div>
 
-          {v.status === "done" && (
-            <video width="320" controls>
-              <source
-                src={`${API}/stream/${v.filename}`}
-                type="video/mp4"
-              />
-            </video>
-          )}
-        </div>
-      ))}
-
-      <button onClick={logout}>Logout</button>
+      <button className="logout" onClick={logout}>Logout</button>
     </div>
   );
 }
-
-/* ================= STYLES ================= */
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #1e1b4b, #312e81)",
-    color: "white",
-    padding: "40px",
-    fontFamily: "Arial",
-  },
-  card: {
-    background: "#111827",
-    padding: "15px",
-    marginTop: "15px",
-    borderRadius: "8px",
-  },
-};
