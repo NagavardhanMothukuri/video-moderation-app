@@ -1,66 +1,90 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
+import "./App.css";
+import { API_BASE } from "./config";
 
-const API = "https://video-moderation-app.onrender.com";
-
-export default function App() {
+function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [file, setFile] = useState(null);
   const [videos, setVideos] = useState([]);
 
-  async function login() {
-    const res = await fetch(`${API}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+  /* ---------------- LOGIN ---------------- */
 
-    const data = await res.json();
-    if (!res.ok) return alert(data.error || "Login failed");
+  const login = async () => {
+    try {
+      const res = await axios.post(`${API_BASE}/api/auth/login`, {
+        email,
+        password,
+      });
+      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
+    } catch {
+      alert("Login failed");
+    }
+  };
 
-    localStorage.setItem("token", data.token);
-    setToken(data.token);
-  }
+  /* ---------------- FETCH VIDEOS ---------------- */
 
-  async function loadVideos() {
-    const res = await fetch(`${API}/videos`, {
+  const loadVideos = async () => {
+    const res = await axios.get(`${API_BASE}/videos`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    setVideos(await res.json());
-  }
-
-  async function uploadVideo() {
-    if (!file) return alert("Select a video");
-
-    const form = new FormData();
-    form.append("video", file);
-
-    await fetch(`${API}/upload`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-
-    alert("Upload started");
-    setTimeout(loadVideos, 3000);
-  }
-
-  function logout() {
-    localStorage.clear();
-    setToken(null);
-  }
+    setVideos(res.data);
+  };
 
   useEffect(() => {
     if (token) loadVideos();
   }, [token]);
 
+  /* ---------------- UPLOAD ---------------- */
+
+  const uploadVideo = async () => {
+    if (!file) return alert("Select a video");
+
+    const form = new FormData();
+    form.append("video", file);
+
+    await axios.post(`${API_BASE}/upload`, form, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    alert("Upload started");
+    setFile(null);
+    setTimeout(loadVideos, 2000);
+  };
+
+  /* ---------------- LOGOUT ---------------- */
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+  };
+
+  /* ---------------- UI ---------------- */
+
   if (!token) {
     return (
-      <div className="login">
+      <div className="login-page">
         <h1>VIDEO MODERATION SYSTEM</h1>
-        <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-        <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <button onClick={login}>ENTER DASHBOARD</button>
       </div>
     );
@@ -68,8 +92,8 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <h1>Dashboard</h1>
-      <p className="subtitle">Upload, analyze and review videos</p>
+      <h2>Dashboard</h2>
+      <p>Upload, analyze and review videos</p>
 
       <div className="card">
         <h3>Upload Video</h3>
@@ -77,25 +101,22 @@ export default function App() {
         <button onClick={uploadVideo}>Upload</button>
       </div>
 
-      <h2>My Videos</h2>
+      <h3>My Videos</h3>
 
-      <div className="grid">
-        {videos.map((v) => (
-          <div className="video-card" key={v._id}>
-            <p className="name">{v.filename}</p>
-            <span className={`badge ${v.status}`}>{v.status}</span>
-            <p>Sensitivity: {v.sensitivity}</p>
+      {videos.length === 0 && <p>No videos yet</p>}
 
-            {v.status === "done" && (
-              <video controls>
-                <source src={`${API}/stream/${v.filename}`} />
-              </video>
-            )}
-          </div>
-        ))}
-      </div>
+      {videos.map((v) => (
+        <div key={v._id} className="video-item">
+          <span>{v.filename}</span>
+          <span className={v.sensitivity}>{v.sensitivity}</span>
+        </div>
+      ))}
 
-      <button className="logout" onClick={logout}>Logout</button>
+      <button className="logout" onClick={logout}>
+        Logout
+      </button>
     </div>
   );
 }
+
+export default App;

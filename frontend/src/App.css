@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #1c1b4b, #2a2a72);
+  color: white;
+}
+
+.login-page,
+.dashboard {
+  max-width: 900px;
+  margin: auto;
+  padding: 60px 20px;
+}
+
+h1,
+h2 {
+  text-align: center;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: none;
+  background: #22d3ee;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.card {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.video-item {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.safe {
+  color: #22c55e;
+}
+
+.flagged {
+  color: #ef4444;
+}
+
+.logout {
+  background: red;
+  margin-top: 30px;
+}
