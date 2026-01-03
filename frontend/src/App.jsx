@@ -6,8 +6,8 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(localStorage.getItem("token"));
-  const [videos, setVideos] = useState([]);
   const [file, setFile] = useState(null);
+  const [videos, setVideos] = useState([]);
 
   /* ================= LOGIN ================= */
 
@@ -19,7 +19,11 @@ export default function App() {
     });
 
     const data = await res.json();
-    if (!res.ok) return alert("Login failed");
+
+    if (!res.ok) {
+      alert(data.error || "Login failed");
+      return;
+    }
 
     localStorage.setItem("token", data.token);
     setToken(data.token);
@@ -31,6 +35,7 @@ export default function App() {
     const res = await fetch(`${API}/videos`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
     const data = await res.json();
     setVideos(data);
   }
@@ -54,7 +59,7 @@ export default function App() {
     });
 
     alert("Upload started");
-    loadVideos();
+    setTimeout(loadVideos, 3000);
   }
 
   /* ================= LOGOUT ================= */
@@ -76,6 +81,7 @@ export default function App() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
           type="password"
           placeholder="Password"
@@ -98,14 +104,16 @@ export default function App() {
 
       <h2>My Videos</h2>
 
+      {videos.length === 0 && <p>No videos yet</p>}
+
       {videos.map((v) => (
         <div key={v._id} style={styles.card}>
-          <p><b>File:</b> {v.filename}</p>
-          <p><b>Status:</b> {v.status}</p>
-          <p><b>Sensitivity:</b> {v.sensitivity}</p>
+          <p><b>{v.filename}</b></p>
+          <p>Status: {v.status}</p>
+          <p>Sensitivity: {v.sensitivity}</p>
 
           {v.status === "done" && (
-            <video width="300" controls>
+            <video width="320" controls>
               <source
                 src={`${API}/stream/${v.filename}`}
                 type="video/mp4"
@@ -124,14 +132,16 @@ export default function App() {
 
 const styles = {
   container: {
-    padding: "30px",
-    color: "white",
-    background: "linear-gradient(120deg,#1b1f3b,#2c2f6c)",
     minHeight: "100vh",
+    background: "linear-gradient(135deg, #1e1b4b, #312e81)",
+    color: "white",
+    padding: "40px",
+    fontFamily: "Arial",
   },
   card: {
-    background: "#111",
+    background: "#111827",
     padding: "15px",
-    margin: "15px 0",
+    marginTop: "15px",
+    borderRadius: "8px",
   },
 };
